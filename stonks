@@ -1,0 +1,68 @@
+#!/usr/bin/env python
+
+import requests
+import time
+import datetime
+import pandas as pd
+from bs4 import BeautifulSoup
+import sys
+
+
+stock = sys.argv[1].upper()
+url_summary = 'https://finance.yahoo.com/quote/'+stock
+r = requests.get(url_summary)
+soup = BeautifulSoup(r.text, 'html.parser')
+
+
+def sumary():
+    name = soup.find('h1', {'class':'D(ib) Fz(18px)'}).text
+    price = soup.find('div', {'class':'D(ib) Mend(20px)'}).find_all('span')[0].text
+    daily_change = soup.find('div', {'class':'D(ib) Mend(20px)'}).find_all('span')[1].text
+    
+    data_left = []
+    for i in range(16):
+        stats = soup.find('div', {'class':'D(ib) W(1/2) Bxz(bb) Pend(12px) Va(t) ie-7_D(i) smartphone_D(b) smartphone_W(100%) smartphone_Pend(0px) smartphone_BdY smartphone_Bdc($seperatorColor)'}).find_all('td')[i].text
+        data_left.append(stats)
+
+    data_right = []
+    for i in range(16):
+        stats = soup.find('div', {'class':'D(ib) W(1/2) Bxz(bb) Pstart(12px) Va(t) ie-7_D(i) ie-7_Pos(a) smartphone_D(b) smartphone_W(100%) smartphone_Pstart(0px) smartphone_BdB smartphone_Bdc($seperatorColor)'}).find_all('td')[i].text
+        data_right.append(stats)
+
+    data = data_left+data_right
+    print(name+'\n----------')
+    print('Price: '+str(price).replace(',',''))
+    print('Daily change: '+str(daily_change).replace(',',''))
+    position = 0
+    while position <= len(data)-2:
+        print(data[position]+': '+data[position+1])
+        position += 2
+
+
+def history():
+    period_start_year = int(sys.argv[3][:4])
+    period_start_month = int(sys.argv[3][4:6])
+    period_start_day = int(sys.argv[3][6:8])
+    period_end_year = int(sys.argv[4][:4])
+    period_end_month = int(sys.argv[4][4:6])
+    period_end_day =  int(sys.argv[4][6:8])
+
+    period_start = int(time.mktime(datetime.datetime(period_start_year,period_start_month,period_start_day,3,00).timetuple()))
+    period_end = int(time.mktime(datetime.datetime(period_end_year,period_end_month,period_end_day,3,00).timetuple()))
+
+    url_history = 'https://query1.finance.yahoo.com/v7/finance/download/'+stock+'?period1='+str(period_start)+'&period2='+str(period_end)+'&interval=1d&events=history&includeAdjustedClose=true'
+    df = pd.read_csv(url_history)
+    pd.set_option('display.max_rows', None)
+    pd.set_option('display.max_columns', None)
+    pd.set_option('display.width', None)
+    pd.set_option('display.max_colwidth', None)
+    pd.set_option('display.max_rows', None)
+    print(df)
+
+if __name__ == '__main__':
+    if '-h' in sys.argv[:]:
+        history()
+    else:
+        try:
+            summary()
+        except: print('Please enter a valid stock ticker')
